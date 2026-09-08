@@ -1,0 +1,7 @@
+bin
+tmp
+.env
+.env.*
+.git
+.claude/.last-check
+.council

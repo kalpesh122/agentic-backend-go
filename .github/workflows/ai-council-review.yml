@@ -1,0 +1,152 @@
+# Multi-model council code review.
+# Three independent, read-only reviewers (Claude, OpenAI Codex, Google Gemini) grade the PR diff
+# against .github/review-rubric.md and emit JSON matching .github/review-schema.json.
+# One synthesizer job (Claude) clusters and agreement-weights the findings and posts ONE sticky comment.
+# Reviewers whose API key secret is missing are skipped. Drafts and fork PRs are skipped (secrets never reach forks).
+name: AI council review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "specs/**"
+
+concurrency:
+  group: council-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CLAUDE_MODEL: claude-opus-5
+  CODEX_MODEL: gpt-5.6-terra
+  GEMINI_MODEL: gemini-3.1-pro-preview
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.fork == false
+    outputs:
+      claude: ${{ steps.keys.outputs.claude }}
+      codex: ${{ steps.keys.outputs.codex }}
+      gemini: ${{ steps.keys.outputs.gemini }}
+    steps:
+      - id: keys
+        env:
+          A: ${{ secrets.ANTHROPIC_API_KEY }}
+          O: ${{ secrets.OPENAI_API_KEY }}
+          G: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          echo "claude=$([ -n "$A" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "codex=$([ -n "$O" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "gemini=$([ -n "$G" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  claude:
+    needs: gate
+    if: needs.gate.outputs.claude == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review ONLY the changes of PR #${{ github.event.pull_request.number }} in ${{ github.repository }}
+            (diff: `git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}`)
+            against the rubric in .github/review-rubric.md.
+            Report a finding only if you are confident AND it is on a changed line. No style nits.
+            Write your findings as JSON matching .github/review-schema.json to ./review-claude.json
+            (an object with a "findings" array; empty array if none). Do not post comments.
+          claude_args: |
+            --model ${{ env.CLAUDE_MODEL }}
+            --max-turns 12
+            --allowedTools "Read,Grep,Glob,Write,Bash(git diff *),Bash(git log *)"
+      - uses: actions/upload-artifact@v4
+        with: { name: findings-claude, path: review-claude.json, if-no-files-found: warn }
+
+  codex:
+    needs: gate
+    if: needs.gate.outputs.codex == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: ${{ env.CODEX_MODEL }}
+          permission-profile: ":read-only"
+          prompt: |
+            Review ONLY the diff `git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}`
+            against the rubric in .github/review-rubric.md. Confident findings on changed lines only. No style nits.
+          output-schema-file: .github/review-schema.json
+          output-file: review-codex.json
+      - uses: actions/upload-artifact@v4
+        with: { name: findings-codex, path: review-codex.json, if-no-files-found: warn }
+
+  gemini:
+    needs: gate
+    if: needs.gate.outputs.gemini == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: google-github-actions/run-gemini-cli@v0
+        env:
+          GEMINI_CLI_TRUST_WORKSPACE: "true"
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ env.GEMINI_MODEL }}
+          settings: |
+            {"model":{"maxSessionTurns":12},"tools":{"core":["read_file","glob","search_file_content","write_file"]}}
+          prompt: |
+            Review ONLY `git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}`
+            against .github/review-rubric.md. Confident findings on changed lines only. No style nits.
+            Write JSON matching .github/review-schema.json to ./review-gemini.json (empty findings array if none).
+      - uses: actions/upload-artifact@v4
+        with: { name: findings-gemini, path: review-gemini.json, if-no-files-found: warn }
+
+  synthesize:
+    needs: [gate, claude, codex, gemini]
+    if: always() && needs.gate.result == 'success' && needs.gate.outputs.claude == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/download-artifact@v4
+        with: { path: findings, merge-multiple: true }
+      - run: ls -la findings || true
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_sticky_comment: true
+          prompt: |
+            PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Read every JSON file under ./findings/ (one per reviewer model; a file may be missing or empty).
+            Produce ONE consolidated review following .claude/agents/council-synthesizer.md:
+            cluster same-defect findings (same file, within 5 lines, same root cause);
+            2+ reviewers -> raise severity one level, exactly 1 -> lower one level;
+            drop anything below medium after weighting; drop anything not on a changed line.
+            Post at most 10 inline comments (highest severity first, each tagged "(flagged by: …)")
+            and ONE short sticky summary with the verdict. If nothing survives, post only
+            "Council: no blocking findings." as the sticky comment.
+          claude_args: |
+            --model ${{ env.CLAUDE_MODEL }}
+            --max-turns 15
+            --allowedTools "Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff *),Bash(gh pr view *),Bash(git diff *)"

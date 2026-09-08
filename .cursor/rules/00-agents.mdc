@@ -1,0 +1,8 @@
+---
+description: Repository-wide agent instructions (single source of truth)
+alwaysApply: true
+---
+
+Read and follow `AGENTS.md` at the repository root before doing anything. It defines the command
+surface (`just check` is the quality gate), the spec → TDD → verify workflow, hard rules, and where
+skills live (`.agents/skills/*/SKILL.md`). Do not duplicate its content here.

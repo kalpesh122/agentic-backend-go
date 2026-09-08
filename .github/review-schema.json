@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CouncilReviewFindings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "line", "severity", "category", "title", "detail"],
+        "properties": {
+          "file": { "type": "string", "description": "Repo-relative path" },
+          "line": { "type": "integer", "minimum": 1 },
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "category": {
+            "type": "string",
+            "enum": ["correctness", "security", "data", "performance", "tests", "maintainability"]
+          },
+          "title": { "type": "string", "maxLength": 200 },
+          "detail": { "type": "string" },
+          "suggested_fix": { "type": "string" }
+        }
+      }
+    }
+  }
+}

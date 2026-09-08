@@ -1,0 +1,11 @@
+bin/
+tmp/
+.env
+.env.*
+!.env.example
+coverage.out
+.DS_Store
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/.last-check
+.council/
