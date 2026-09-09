@@ -1,0 +1,42 @@
+kit=2.1.0
+stack=go
+files:
+  .cursor/rules/00-agents.mdc e885e5db9b162280857fbdc70ad3724b2ab16b6e704ad2da898944434e909df2
+  .claude/settings.json 1a1b0cb3cf6f24ad891678aeea9c0b3ead6d1997d01014532cf40835616dbf1e
+  .claude/rules/security.md 6d726ebbdaae5555fcbf1d23620966b9386bf82944a13a9792068e5694c02335
+  .claude/rules/testing.md 682fbe75149dffe7cce52331ccb5bd52ab3d40df2e65098543871c882eda59f9
+  .claude/rules/specs.md 76fccddf7918c684518149f48bdec62941883c03a97f536ae76d2965b39b6313
+  .mcp.json 34f34450f8fea03ca7dfd5c4a068159bbb5902713048a6f2b9be0633c22b469e
+  .github/review-rubric.md 7d39c552870e10ac1f8483a714f653bd9ed5e1e266b934640eddc6ccd9adbec0
+  .github/review-schema.json 29322322ef03494ae8edc77c93367133d368581721353b3c675867af8ecf0e9c
+  .github/PULL_REQUEST_TEMPLATE.md 20a73db56732808bd6400265119799a350e82d8530af7c9a713f38567176e1f3
+  .github/workflows/ai-council-review.yml 61eed22fe6acf3fcd3bf0bbc12011704b027a7fd4002060f05ab098e535c0e56
+  .github/workflows/claude.yml 486166dba429d1fa2a99a1127393f8d2353f107625e6fcd0cb3d8142e5be21de
+  scripts/council-review.sh 753aa59765abeb4198c3a9d0dcbac5bc757339220287d3f70bf1d60bfcc3e819
+  scripts/council/openai-compatible-review.sh 9d904dd4d0d6866c12700533093cd4ac44e32ebfa637341d3028810d0a0a1ead
+  specs/README.md 19572c1d62354b851b7e7ea9bd18ea7e45b577bd704c651f7bc0ffc888d36a6d
+  specs/000-template/spec.md 3b0dba9183cc0aef52ffe96abaace38e813cee12a4764804eefc2058370a9bb8
+  specs/000-template/plan.md 016a3b91cce46bb54f54875b1ceb21711eb0ffabc9366a4d5129a3bfe875fb5d
+  specs/000-template/tasks.md 58ce378d0362e19ce18ab370ce1a968a71f896726aa8b8bb9c87b83ec31f27f6
+  docs/adr/0000-template.md 5860ae2ee0c8afb3ce7daec1c23288af10e66c1b4cb6b616f86116550aec5b73
+  docs/adr/0001-record-architecture-decisions.md 9cce6598718dacea5560dd890d88a5d14af6edd80dc707c1aa3a2bf588ed87c6
+  .devcontainer/devcontainer.json 89c1249b9e8e1e95b196facaf8434cfc214c8eb5f4102bef34508a0bac36e395
+  .claude/skills/adr/SKILL.md 36fd8feb65c51a1cc2f0a835a42e27429f15536fe30e27dd33798ea5956ab8c7
+  .claude/skills/brainstorm-spec/SKILL.md 20c5b3733d547b859786e93b45fa961f241923e88eec712945dfd21857d4a3a0
+  .claude/skills/code-review/SKILL.md 20f2cc798e50567a33c34c768124f14dabaae82331978142d516e514aae59c4a
+  .claude/skills/council-review/SKILL.md 5af8c229aefc9a41333469c1fd49547300b8d9487183b7d2cff68d4731e54448
+  .claude/skills/debug/SKILL.md 36a048d56d7f61cffae978a93068c63272c250bf09bbd69f93ccc3314deac8f3
+  .claude/skills/git-hygiene/SKILL.md c0b4ea68d29418e0b9b34fab85232dd8717837f4e48692cbcd2748bcd1866a1f
+  .claude/skills/tdd/SKILL.md 1a2320c62563c24d50bd12213562bf041ba02c149ee8fc9df852536ba74e88ab
+  .claude/skills/verify-before-done/SKILL.md c7c7dad29e2015d15e1b13d58a5191b918e38134f71530e906d23a0c334fff5c
+  .claude/agents/council-synthesizer.md cf1fbcf77b42e4745d364ac7e07288cce74a442e0ea4561d0e8ff783284ce605
+  .claude/agents/explorer.md 02292993a18107cee1b776e1ba0ab82739a43305e5bb888021baed07e0397b97
+  .claude/agents/planner.md 2244e82b7905b8b227783384eb05419398117e223d9d6f1976d624f7de18696f
+  .claude/agents/reviewer.md fdee7d5c8bd1538f0d5a9c82600886081a42fac135a2768bc139dc8d2e3d4579
+  .claude/agents/security-reviewer.md db87add62285ac75b8b408199b512535fa8d44513862d8f2de7dfc231a70343d
+  .claude/agents/tdd-implementer.md b3865718a399bcbf91804aad18f634fb44dda810c74f534a8779984b41f50cd1
+  .claude/hooks/block-dangerous.sh 907385e352bc8aadf8ac4ac6d4260eb12042137651e0fe1c32798c5059c2ae50
+  .claude/hooks/format-file.sh 1ee55f7be57777a8c722dcc35593511a9c1fdd200aa64a56dc9a3532d503029d
+  .claude/hooks/protect-files.sh dea6f9afe2d268e1ad90d7bf36737dba3e49d6d7db4bb929a72c0fcc72ae6728
+  .claude/hooks/session-start.sh 3b6313db2661165a8f25f5fbcc645aede35f60b6e8de89b0fcc68d1f56e3b2ec
+  .claude/hooks/verify-on-stop.sh 27e90c13ba8df32a1c3ad217a3f78cebb703940b03efef28cbb336bfd8b164a2

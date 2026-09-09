@@ -1,5 +1,5 @@
 # Multi-model council code review.
-# Three independent, read-only reviewers (Claude, OpenAI Codex, Google Gemini) grade the PR diff
+# Independent, read-only reviewers (Claude, OpenAI Codex, Google Gemini, DeepSeek over its OpenAI-compatible API) grade the PR diff
 # against .github/review-rubric.md and emit JSON matching .github/review-schema.json.
 # One synthesizer job (Claude) clusters and agreement-weights the findings and posts ONE sticky comment.
 # Reviewers whose API key secret is missing are skipped. Drafts and fork PRs are skipped (secrets never reach forks).
@@ -24,6 +24,7 @@ env:
   CLAUDE_MODEL: claude-opus-5
   CODEX_MODEL: gpt-5.6-terra
   GEMINI_MODEL: gemini-3.1-pro-preview
+  DEEPSEEK_MODEL: deepseek-v4-flash
 
 jobs:
   gate:
@@ -33,16 +34,19 @@ jobs:
       claude: ${{ steps.keys.outputs.claude }}
       codex: ${{ steps.keys.outputs.codex }}
       gemini: ${{ steps.keys.outputs.gemini }}
+      deepseek: ${{ steps.keys.outputs.deepseek }}
     steps:
       - id: keys
         env:
           A: ${{ secrets.ANTHROPIC_API_KEY }}
           O: ${{ secrets.OPENAI_API_KEY }}
           G: ${{ secrets.GEMINI_API_KEY }}
+          D: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
           echo "claude=$([ -n "$A" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "codex=$([ -n "$O" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "gemini=$([ -n "$G" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "deepseek=$([ -n "$D" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   claude:
     needs: gate
@@ -118,8 +122,35 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: findings-gemini, path: review-gemini.json, if-no-files-found: warn }
 
+  deepseek:
+    needs: gate
+    if: needs.gate.outputs.deepseek == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0, persist-credentials: false }
+      - name: Review over the OpenAI-compatible API
+        env:
+          REVIEW_BASE_URL: https://api.deepseek.com
+          REVIEW_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          REVIEW_MODEL: ${{ env.DEEPSEEK_MODEL }}
+        run: |
+          {
+            echo "You are a senior reviewer. Review ONLY the unified diff below against the rubric. Confident findings on changed lines only. No style nits."
+            echo "Return a JSON object {\"findings\": [...]} matching this schema:"; cat .github/review-schema.json
+            echo; echo "## Rubric"; cat .github/review-rubric.md
+            echo; echo "## Diff"; echo '```diff'
+            git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | head -c 400000
+            echo '```'
+          } > prompt.md
+          scripts/council/openai-compatible-review.sh deepseek < prompt.md | jq '{findings: .}' > review-deepseek.json
+      - uses: actions/upload-artifact@v4
+        with: { name: findings-deepseek, path: review-deepseek.json, if-no-files-found: warn }
+
   synthesize:
-    needs: [gate, claude, codex, gemini]
+    needs: [gate, claude, codex, gemini, deepseek]
     if: always() && needs.gate.result == 'success' && needs.gate.outputs.claude == 'true'
     runs-on: ubuntu-latest
     permissions:

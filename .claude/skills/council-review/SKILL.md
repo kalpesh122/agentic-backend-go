@@ -6,7 +6,7 @@ argument-hint: [base-ref]
 
 # Multi-model council review
 
-Locally: `just council` (wraps `scripts/council-review.sh [base-ref]`). Needs whichever of `claude`, `codex`, `gemini` CLIs are installed and the matching API keys in `.env`. Missing reviewers are skipped, not fatal.
+Locally: `just council` (wraps `scripts/council-review.sh [base-ref]`). Needs whichever of `claude`, `codex`, `gemini` CLIs are installed and the matching API keys in `.env`; DeepSeek joins with just `DEEPSEEK_API_KEY` (called over its OpenAI-compatible API, no CLI). Missing reviewers are skipped, not fatal.
 
 In CI: `.github/workflows/ai-council-review.yml` runs the same rubric with three read-only reviewer jobs and one synthesizer that posts a single sticky PR comment.
 

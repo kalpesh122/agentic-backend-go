@@ -5,9 +5,10 @@
 # rubric, then has Claude synthesize one deduplicated, agreement-weighted findings list.
 #
 # Usage:   scripts/council-review.sh [base-ref]      # default: origin/main (falls back to main)
-# Env:     ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY (read from .env if present)
-#          COUNCIL_CLAUDE_MODEL, COUNCIL_CODEX_MODEL, COUNCIL_GEMINI_MODEL to override models
-#          COUNCIL_SKIP=codex,gemini to skip reviewers
+# Env:     ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY (read from .env if present)
+#          COUNCIL_CLAUDE_MODEL, COUNCIL_CODEX_MODEL, COUNCIL_GEMINI_MODEL, COUNCIL_DEEPSEEK_MODEL to override
+#          COUNCIL_SKIP=codex,gemini,deepseek to skip reviewers
+#          DeepSeek needs no CLI: it is called over its OpenAI-compatible API (scripts/council/openai-compatible-review.sh)
 # Exit:    0 = no critical findings, 1 = critical findings, 2 = nothing to review / setup problem
 # Output:  .council/report.md (gitignored) and stdout
 set -uo pipefail
@@ -23,6 +24,7 @@ git rev-parse --verify -q "$BASE" >/dev/null || { echo "Base ref not found: $BAS
 CLAUDE_MODEL="${COUNCIL_CLAUDE_MODEL:-claude-opus-5}"
 CODEX_MODEL="${COUNCIL_CODEX_MODEL:-gpt-5.6-terra}"
 GEMINI_MODEL="${COUNCIL_GEMINI_MODEL:-gemini-3.1-pro-preview}"
+DEEPSEEK_MODEL="${COUNCIL_DEEPSEEK_MODEL:-deepseek-v4-flash}"
 SKIP=",${COUNCIL_SKIP:-},"
 
 OUT="$ROOT/.council"; rm -rf "$OUT"; mkdir -p "$OUT"
@@ -69,7 +71,13 @@ if have gemini && [ -n "${GEMINI_API_KEY:-}" ] && ! skipped gemini; then
   PIDS+=($!); NAMES+=(gemini)
 else echo "skip: gemini (missing CLI, GEMINI_API_KEY, or COUNCIL_SKIP)"; fi
 
-[ "${#PIDS[@]}" -gt 0 ] || { echo "No reviewers available. Install claude/codex/gemini and set API keys in .env." >&2; exit 2; }
+if [ -n "${DEEPSEEK_API_KEY:-}" ] && ! skipped deepseek; then
+  ( REVIEW_BASE_URL="${DEEPSEEK_BASE_URL:-https://api.deepseek.com}" REVIEW_API_KEY="$DEEPSEEK_API_KEY" REVIEW_MODEL="$DEEPSEEK_MODEL" \
+      "$ROOT/scripts/council/openai-compatible-review.sh" deepseek < "$OUT/prompt.md" > "$OUT/deepseek.json" 2>"$OUT/deepseek.err" ) &
+  PIDS+=($!); NAMES+=(deepseek)
+else echo "skip: deepseek (missing DEEPSEEK_API_KEY or COUNCIL_SKIP)"; fi
+
+[ "${#PIDS[@]}" -gt 0 ] || { echo "No reviewers available. Install claude/codex/gemini, or set DEEPSEEK_API_KEY, in .env." >&2; exit 2; }
 echo "reviewers: ${NAMES[*]} (base: $BASE)"
 for p in "${PIDS[@]}"; do wait "$p" || true; done
 
